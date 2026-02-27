@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SpaceOptions Inventory System</title>
+<style>
+  body { font-family: Arial, sans-serif; margin:0; background:#f7f7f7; }
+  header { background:#1f2937; color:white; padding:15px; text-align:center; }
+  nav { display:flex; justify-content:center; background:#374151; }
+  nav button { background:none; border:none; color:white; padding:15px 25px; cursor:pointer; font-size:16px; }
+  nav button:hover, nav button.active { background:#2563eb; }
+  .tab-content { padding:20px; display:none; }
+  table { width:100%; border-collapse: collapse; margin-top:15px; }
+  th, td { padding:10px; border:1px solid #ddd; text-align:left; }
+  th { background:#2563eb; color:white; }
+  input, select, textarea, button { padding:8px; margin:5px 0; width:100%; }
+  .status-pending { color:orange; font-weight:bold; }
+  .status-approved { color:green; font-weight:bold; }
+  .status-rejected { color:red; font-weight:bold; }
+  .low-stock { color:red; font-weight:bold; }
+  @media (max-width:600px){ nav { flex-direction:column; } }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>SpaceOptions Inventory & Job System</h1>
+</header>
+
+<nav>
+  <button class="tab-link active" data-tab="inventory-tab">Inventory</button>
+  <button class="tab-link" data-tab="requests-tab">Builder Requests</button>
+  <button class="tab-link" data-tab="reorder-tab">Reorders</button>
+  <button class="tab-link" data-tab="jobs-tab">Jobs</button>
+  <button class="tab-link" data-tab="reports-tab">Reports</button>
+</nav>
+
+<!-- Inventory Tab -->
+<div class="tab-content" id="inventory-tab" style="display:block;">
+  <h2>Inventory</h2>
+  <button onclick="addMaterial()">Add Material</button>
+  <table id="inventory-table">
+    <thead>
+      <tr>
+        <th>Name</th><th>Type</th><th>Qty</th><th>Min Stock</th><th>Reorder Level</th><th>Supplier</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Builder Requests Tab -->
+<div class="tab-content" id="requests-tab">
+  <h2>Builder Requests</h2>
+  <button onclick="addRequest()">New Request</button>
+  <table id="requests-table">
+    <thead>
+      <tr>
+        <th>Builder</th><th>Job</th><th>Materials</th><th>Status</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Reorder Tab -->
+<div class="tab-content" id="reorder-tab">
+  <h2>Reorders</h2>
+  <table id="reorder-table">
+    <thead>
+      <tr>
+        <th>Material</th><th>Qty Needed</th><th>Supplier</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Jobs Tab -->
+<div class="tab-content" id="jobs-tab">
+  <h2>Jobs</h2>
+  <button onclick="addJob()">Add Job</button>
+  <table id="jobs-table">
+    <thead>
+      <tr>
+        <th>Client</th><th>Address</th><th>Builder</th><th>Status</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+</div>
+
+<!-- Reports Tab -->
+<div class="tab-content" id="reports-tab">
+  <h2>Reports</h2>
+  <div id="report-content"></div>
+</div>
+
+<script>
+// ----- Tab Navigation -----
+document.querySelectorAll('.tab-link').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-link').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(t=>t.style.display='none');
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).style.display='block';
+    renderAll();
+  });
+});
+
+// ----- Local Storage Helpers -----
+function getData(key){ return JSON.parse(localStorage.getItem(key)||'[]'); }
+function saveData(key,data){ localStorage.setItem(key,JSON.stringify(data)); }
+
+// ----- Inventory -----
+function renderInventory(){
+  const tbody = document.querySelector('#inventory-table tbody');
+  tbody.innerHTML='';
+  const materials = getData('materials');
+  materials.forEach((m,i)=>{
+    tbody.innerHTML+=`<tr>
+      <td>${m.name}</td>
+      <td>${m.type}</td>
+      <td class="${m.qty<=m.minStock?'low-stock':''}">${m.qty}</td>
+      <td>${m.minStock}</td>
+      <td>${m.reorderLevel}</td>
+      <td>${m.supplier}</td>
+      <td>
+        <button onclick="editMaterial(${i})">Edit</button>
+        <button onclick="deleteMaterial(${i})">Delete</button>
+      </td>
+    </tr>`;
+  });
+}
+
+function addMaterial(){
+  const name = prompt('Material Name:'); if(!name) return;
+  const type = prompt('Type (wire/wood/hardware):'); if(!type) return;
+  const qty = parseInt(prompt('Quantity:'),10) || 0;
+  const minStock = parseInt(prompt('Minimum Stock:'),10) || 1;
+  const reorderLevel = parseInt(prompt('Reorder Level:'),10) || minStock;
+  const supplier = prompt('Supplier:') || 'Unknown';
+  const materials = getData('materials');
+  materials.push({name,type,qty,minStock,reorderLevel,supplier});
+  saveData('materials',materials);
+  renderInventory(); renderReorder();
+}
+
+function editMaterial(i){
+  const materials = getData('materials'); const m = materials[i];
+  m.name = prompt('Material Name:',m.name) || m.name;
+  m.type = prompt('Type:',m.type) || m.type;
+  m.qty = parseInt(prompt('Quantity:',m.qty),10)||m.qty;
+  m.minStock = parseInt(prompt('Min Stock:',m.minStock),10)||m.minStock;
+  m.reorderLevel = parseInt(prompt('Reorder Level:',m.reorderLevel),10)||m.reorderLevel;
+  m.supplier = prompt('Supplier:',m.supplier)||m.supplier;
+  saveData('materials',materials);
+  renderInventory(); renderReorder();
+}
+
+function deleteMaterial(i){
+  if(!confirm('Delete this material?')) return;
+  const materials = getData('materials');
+  materials.splice(i,1);
+  saveData('materials',materials);
+  renderInventory(); renderReorder();
+}
+
+// ----- Builder Requests -----
+function renderRequests(){
+  const tbody = document.querySelector('#requests-table tbody');
+  tbody.innerHTML='';
+  const requests = getData('requests');
+  requests.forEach((r,i)=>{
+    const matList = r.items.map(it=>`${it.name} (${it.qty})`).join(', ');
+    tbody.innerHTML+=`<tr>
+      <td>${r.builder}</td>
+      <td>${r.job}</td>
+      <td>${matList}</td>
+      <td class="status-${r.status.toLowerCase()}">${r.status}</td>
+      <td>
+        ${r.status==='Pending'?`<button onclick="approveRequest(${i})">Approve</button><button onclick="rejectRequest(${i})">Reject</button>`:''}
+      </td>
+    </tr>`;
+  });
+}
+
+function addRequest(){
+  const builder = prompt('Builder Name:'); if(!builder) return;
+  const job = prompt('Job Name:'); if(!job) return;
+  const materials = getData('materials');
+  if(materials.length===0){ alert('No materials available'); return; }
+  let items=[];
+  materials.forEach(m=>{
+    const qty = parseInt(prompt(`Qty of ${m.name}?`),10);
+    if(qty>0) items.push({name:m.name,qty});
+  });
+  if(items.length===0){ alert('No items selected'); return; }
+  const requests = getData('requests'); requests.push({builder,job,items,status:'Pending'}); saveData('requests',requests);
+  renderRequests();
+}
+
+function approveRequest(i){
+  const requests = getData('requests'); const r = requests[i];
+  const materials = getData('materials');
+  r.items.forEach(it=>{
+    const m = materials.find(mat=>mat.name===it.name);
+    if(m) m.qty -= it.qty;
+  });
+  r.status='Approved';
+  saveData('materials',materials); saveData('requests',requests);
+  renderRequests(); renderInventory(); renderReorder();
+}
+
+function rejectRequest(i){
+  const requests = getData('requests'); requests[i].status='Rejected';
+  saveData('requests',requests);
+  renderRequests();
+}
+
+// ----- Reorders -----
+function renderReorder(){
+  const tbody = document.querySelector('#reorder-table tbody');
+  tbody.innerHTML='';
+  const materials = getData('materials');
+  materials.forEach(m=>{
+    if(m.qty<=m.reorderLevel){
+      const qtyNeeded = m.reorderLevel*2 - m.qty;
+      tbody.innerHTML+=`<tr>
+        <td>${m.name}</td>
+        <td>${qtyNeeded}</td>
+        <td>${m.supplier}</td>
+        <td><button onclick="markOrdered('${m.name}')">Mark Ordered</button></td>
+      </tr>`;
+    }
+  });
+}
+
+function markOrdered(name){
+  alert(name+' marked as ordered!');
+}
+
+// ----- Jobs -----
+function renderJobs(){
+  const tbody = document.querySelector('#jobs-table tbody');
+  tbody.innerHTML='';
+  const jobs = getData('jobs');
+  jobs.forEach((j,i)=>{
+    tbody.innerHTML+=`<tr>
+      <td>${j.client}</td>
+      <td>${j.address}</td>
+      <td>${j.builder}</td>
+      <td>${j.status}</td>
+      <td><button onclick="editJob(${i})">Edit</button><button onclick="deleteJob(${i})">Delete</button></td>
+    </tr>`;
+  });
+}
+
+function addJob(){
+  const client = prompt('Client Name:'); if(!client) return;
+  const address = prompt('Address:'); if(!address) return;
+  const builder = prompt('Builder:'); if(!builder) return;
+  const jobs = getData('jobs'); jobs.push({client,address,builder,status:'Pending'}); saveData('jobs',jobs);
+  renderJobs();
+}
+
+function editJob(i){
+  const jobs = getData('jobs'); const j = jobs[i];
+  j.client = prompt('Client Name:',j.client)||j.client;
+  j.address = prompt('Address:',j.address)||j.address;
+  j.builder = prompt('Builder:',j.builder)||j.builder;
+  j.status = prompt('Status:',j.status)||j.status;
+  saveData('jobs',jobs);
+  renderJobs();
+}
+
+function deleteJob(i){
+  if(!confirm('Delete job?')) return;
+  const jobs = getData('jobs'); jobs.splice(i,1); saveData('jobs',jobs);
+  renderJobs();
+}
+
+// ----- Reports -----
+function renderReports(){
+  const materials = getData('materials');
+  const requests = getData('requests');
+  let content = `<h3>Inventory Report</h3>`;
+  content += `<p>Total Materials: ${materials.length}</p>`;
+  const low = materials.filter(m=>m.qty<=m.minStock).length;
+  content += `<p>Low Stock Items: ${low}</p>`;
+  const approved = requests.filter(r=>r.status==='Approved').length;
+  const pending = requests.filter(r=>r.status==='Pending').length;
+  content += `<h3>Requests</h3><p>Approved: ${approved}, Pending: ${pending}</p>`;
+  document.getElementById('report-content').innerHTML=content;
+}
+
+// ----- Render All -----
+function renderAll(){
+  renderInventory(); renderRequests(); renderReorder(); renderJobs(); renderReports();
+}
+
+// Initial render
+renderAll();
+</script>
+
+</body>
+</html>
