@@ -14,13 +14,15 @@
   table { width:100%; border-collapse: collapse; margin-top:10px; background:white; }
   th, td { border:1px solid #ccc; padding:8px; text-align:center; }
   th { background:#2563eb; color:white; }
-  button.small { padding:4px 8px; margin:0 2px; }
+  button.small { padding:4px 8px; margin:0 2px; cursor:pointer; }
   input.min-stock { width:60px; text-align:center; }
   .low { color:red; font-weight:bold; }
   .status-pending { color:orange; font-weight:bold; }
   .status-approved { color:green; font-weight:bold; }
   .status-rejected { color:red; font-weight:bold; }
   h2 { margin-top:0; }
+  #new-request-btn { margin-top:10px; padding:8px 15px; background:#2563eb; color:white; border:none; cursor:pointer; }
+  #new-request-btn:hover { background:#1d4ed8; }
   @media(max-width:600px){ nav { flex-direction:column; } }
 </style>
 </head>
@@ -28,7 +30,6 @@
 
 <header>SpaceOptions Inventory System</header>
 
-<!-- Login -->
 <div id="login-tab" class="tab" style="display:block; text-align:center; margin-top:50px;">
   <h2>Login</h2>
   <input type="text" id="user-name" placeholder="Name" style="padding:8px; width:200px;">
@@ -36,7 +37,6 @@
   <button onclick="loginUser()">Login</button>
 </div>
 
-<!-- Main Tabs -->
 <div id="main-tabs" style="display:none;">
   <nav>
     <button class="tab-btn active" data-tab="inventory">Inventory</button>
@@ -44,7 +44,6 @@
     <button class="tab-btn" data-tab="reorder">Reorders</button>
   </nav>
 
-  <!-- Inventory Tab -->
   <div id="inventory" class="tab" style="display:block;">
     <h2>Inventory</h2>
     <table id="inventory-table">
@@ -55,17 +54,17 @@
     </table>
   </div>
 
-  <!-- Requests Tab -->
   <div id="requests" class="tab">
     <h2>Requests</h2>
     <table id="requests-table">
-      <thead><tr><th>Builder</th><th>Job</th><th>Materials</th><th>Status</th><th>Actions</th></tr></thead>
+      <thead>
+        <tr><th>Builder</th><th>Job</th><th>Materials</th><th>Status</th><th>Actions</th></tr>
+      </thead>
       <tbody></tbody>
     </table>
     <button id="new-request-btn" onclick="newRequest()">+ New Request</button>
   </div>
 
-  <!-- Reorder Tab -->
   <div id="reorder" class="tab">
     <h2>Reorders (Low Stock)</h2>
     <table id="reorder-table">
@@ -83,8 +82,6 @@ const builders = [
   {name:'Brady', pin:'1234'},
   {name:'Kaleb', pin:'1234'}
 ];
-
-// Manager
 const manager = {name:'manager', pin:'admin123'};
 
 // Fixed Materials
@@ -95,22 +92,20 @@ const defaultMaterials = [
   {name:'Screws', type:'Hardware', qty:2000, minStock:500}
 ];
 
-// Init storage
-if(!localStorage.getItem('materials')){ localStorage.setItem('materials',JSON.stringify(defaultMaterials)); }
-if(!localStorage.getItem('requests')){ localStorage.setItem('requests',JSON.stringify([])); }
+// Init localStorage
+if(!localStorage.getItem('materials')) localStorage.setItem('materials', JSON.stringify(defaultMaterials));
+if(!localStorage.getItem('requests')) localStorage.setItem('requests', JSON.stringify([]));
 
 let currentUser = null;
 let isManager = false;
 
-// ----- Login -----
+// Login
 function loginUser(){
   const name=document.getElementById('user-name').value.trim();
   const pin=document.getElementById('user-pin').value.trim();
-  if(builders.find(b=>b.name===name && b.pin===pin)){
-    currentUser=name; isManager=false;
-  } else if(name===manager.name && pin===manager.pin){
-    currentUser=name; isManager=true;
-  } else { alert('Invalid credentials'); return; }
+  if(builders.find(b=>b.name===name && b.pin===pin)){ currentUser=name; isManager=false; }
+  else if(name===manager.name && pin===manager.pin){ currentUser=name; isManager=true; }
+  else { alert('Invalid credentials'); return; }
 
   document.getElementById('login-tab').style.display='none';
   document.getElementById('main-tabs').style.display='block';
@@ -118,9 +113,9 @@ function loginUser(){
   renderAll();
 }
 
-// ----- Tabs -----
+// Tabs
 document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click',()=>{
+  btn.addEventListener('click', ()=>{
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.tab').forEach(t=>t.style.display='none');
     btn.classList.add('active');
@@ -133,7 +128,7 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
 function getData(key){ return JSON.parse(localStorage.getItem(key)||'[]'); }
 function saveData(key,data){ localStorage.setItem(key,JSON.stringify(data)); }
 
-// ----- Inventory -----
+// Inventory
 function renderInventory(){
   const tbody=document.querySelector('#inventory-table tbody'); tbody.innerHTML='';
   const materials=getData('materials');
@@ -141,7 +136,7 @@ function renderInventory(){
     tbody.innerHTML+=`<tr>
       <td>${m.name}</td>
       <td>${m.type}</td>
-      <td>${m.qty}</td>
+      <td class="${m.qty<=m.minStock?'low':''}">${m.qty}</td>
       <td><input type="number" class="min-stock" value="${m.minStock}" onchange="updateMinStock(${i},this.value)"></td>
       <td>
         <button class="small" onclick="adjustQty(${i},1)">+1</button>
@@ -160,7 +155,7 @@ function updateMinStock(i,value){
   saveData('materials',materials); renderReorder();
 }
 
-// ----- Requests -----
+// Requests
 function renderRequests(){
   const tbody=document.querySelector('#requests-table tbody'); tbody.innerHTML='';
   let requests=getData('requests');
@@ -183,7 +178,7 @@ function renderRequests(){
 }
 function newRequest(){
   const job=prompt('Job Name'); if(!job) return;
-  const materials=getData('materials'); if(materials.length===0){ alert('No materials'); return; }
+  const materials=getData('materials');
   let items=[];
   materials.forEach(m=>{
     const qty=parseInt(prompt(`Qty of ${m.name}? (sq ft)`),10);
@@ -210,7 +205,7 @@ function rejectRequest(i){
   renderRequests();
 }
 
-// ----- Reorder -----
+// Reorders
 function renderReorder(){
   const tbody=document.querySelector('#reorder-table tbody'); tbody.innerHTML='';
   const materials=getData('materials');
@@ -222,10 +217,9 @@ function renderReorder(){
   });
 }
 
-// ----- Render All -----
+// Render all
 function renderAll(){ renderInventory(); renderRequests(); renderReorder(); }
 
 </script>
-
 </body>
 </html>
