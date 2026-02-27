@@ -5,27 +5,27 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SpaceOptions Inventory</title>
 <style>
-  body { font-family: Arial,sans-serif; margin:0; background:#f4f4f4; }
-  header { background:#1f2937; color:white; padding:15px; text-align:center; }
-  nav { display:flex; justify-content:center; background:#374151; flex-wrap:wrap; }
-  nav button { background:none; border:none; color:white; padding:12px 20px; cursor:pointer; font-size:16px; }
+  body { font-family: 'Segoe UI', sans-serif; margin:0; background:#f0f2f5; color:#1f2937; }
+  header { background:#111827; color:white; padding:15px; text-align:center; font-size:24px; }
+  nav { display:flex; justify-content:center; background:#1f2937; flex-wrap:wrap; }
+  nav button { background:none; border:none; color:white; padding:12px 25px; cursor:pointer; font-size:16px; }
   nav button:hover, nav button.active { background:#2563eb; }
   .tab { display:none; padding:20px; }
-  table { width:100%; border-collapse: collapse; margin-top:10px; }
-  th, td { border:1px solid #ccc; padding:8px; text-align:left; }
+  table { width:100%; border-collapse: collapse; margin-top:10px; background:white; }
+  th, td { border:1px solid #ccc; padding:8px; text-align:center; }
   th { background:#2563eb; color:white; }
   button.small { padding:4px 8px; margin:0 2px; }
+  input.min-stock { width:60px; text-align:center; }
   .low { color:red; font-weight:bold; }
+  h2 { margin-top:0; }
   @media(max-width:600px){ nav { flex-direction:column; } }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>SpaceOptions Inventory System</h1>
-</header>
+<header>SpaceOptions Inventory System</header>
 
-<!-- Builder PIN Login -->
+<!-- Builder Login -->
 <div id="login-tab" class="tab" style="display:block; text-align:center; margin-top:50px;">
   <h2>Builder Login</h2>
   <input type="text" id="builder-name" placeholder="Builder Name" style="padding:8px; width:200px;">
@@ -46,11 +46,10 @@
     <h2>Inventory</h2>
     <table id="inventory-table">
       <thead>
-        <tr><th>Material</th><th>Type</th><th>Qty</th><th>Adjust</th></tr>
+        <tr><th>Material</th><th>Type</th><th>Quantity (sq ft)</th><th>Min Stock (sq ft)</th><th>Adjust</th></tr>
       </thead>
       <tbody></tbody>
     </table>
-    <button onclick="addMaterial()">+ Add Material</button>
   </div>
 
   <!-- Builder Requests Tab -->
@@ -74,28 +73,38 @@
 </div>
 
 <script>
-// ----- Data Helpers -----
-function getData(key){ return JSON.parse(localStorage.getItem(key)||'[]'); }
-function saveData(key,data){ localStorage.setItem(key,JSON.stringify(data)); }
+// ----- Fixed Builders -----
+const builders = [
+  {name:'Panther', pin:'1234'},
+  {name:'Will', pin:'1234'},
+  {name:'Brady', pin:'1234'},
+  {name:'Kaleb', pin:'1234'}
+];
+
+// ----- Fixed Materials (predefined) -----
+const defaultMaterials = [
+  {name:'Wire Shelf', type:'Wire', qty:500, minStock:100},
+  {name:'Wood Shelf', type:'Wood', qty:300, minStock:50},
+  {name:'Brackets', type:'Hardware', qty:1000, minStock:200},
+  {name:'Screws', type:'Hardware', qty:2000, minStock:500}
+];
+
+// Initialize localStorage materials if not exist
+if(!localStorage.getItem('materials')){ localStorage.setItem('materials',JSON.stringify(defaultMaterials)); }
+if(!localStorage.getItem('requests')){ localStorage.setItem('requests',JSON.stringify([])); }
+
+let currentBuilder = null;
 
 // ----- Builder Login -----
-let currentBuilder = null;
 function loginBuilder(){
   const name = document.getElementById('builder-name').value.trim();
   const pin = document.getElementById('builder-pin').value.trim();
-  if(!name || !pin){ alert('Enter name and PIN'); return; }
-  // check if builder exists
-  let builders = getData('builders');
-  let builder = builders.find(b=>b.name===name && b.pin===pin);
-  if(!builder){
-    if(confirm('New builder? Create account?')){
-      builder = {name,pin}; builders.push(builder); saveData('builders',builders);
-    } else return;
-  }
-  currentBuilder = builder.name;
-  document.getElementById('login-tab').style.display='none';
-  document.getElementById('main-tabs').style.display='block';
-  renderAll();
+  if(builders.find(b=>b.name===name && b.pin===pin)){
+    currentBuilder=name;
+    document.getElementById('login-tab').style.display='none';
+    document.getElementById('main-tabs').style.display='block';
+    renderAll();
+  } else { alert('Invalid name or PIN'); }
 }
 
 // ----- Tabs -----
@@ -109,15 +118,20 @@ document.querySelectorAll('.tab-btn').forEach(btn=>{
   });
 });
 
+// ----- Data Helpers -----
+function getData(key){ return JSON.parse(localStorage.getItem(key)||'[]'); }
+function saveData(key,data){ localStorage.setItem(key,JSON.stringify(data)); }
+
 // ----- Inventory -----
 function renderInventory(){
-  const tbody = document.querySelector('#inventory-table tbody'); tbody.innerHTML='';
-  const materials = getData('materials');
+  const tbody=document.querySelector('#inventory-table tbody'); tbody.innerHTML='';
+  const materials=getData('materials');
   materials.forEach((m,i)=>{
     tbody.innerHTML+=`<tr>
       <td>${m.name}</td>
       <td>${m.type}</td>
-      <td class="${m.qty<=m.minStock?'low':''}">${m.qty}</td>
+      <td>${m.qty}</td>
+      <td><input type="number" class="min-stock" value="${m.minStock}" onchange="updateMinStock(${i},this.value)"></td>
       <td>
         <button class="small" onclick="adjustQty(${i},1)">+1</button>
         <button class="small" onclick="adjustQty(${i},-1)">-1</button>
@@ -125,48 +139,46 @@ function renderInventory(){
     </tr>`;
   });
 }
-function addMaterial(){
-  const name = prompt('Material Name'); if(!name) return;
-  const type = prompt('Type (wire/wood/hardware)'); if(!type) return;
-  const qty = parseInt(prompt('Quantity'),10)||0;
-  const minStock = parseInt(prompt('Minimum Stock'),10)||1;
-  const materials = getData('materials'); materials.push({name,type,qty,minStock}); saveData('materials',materials);
-  renderInventory(); renderReorder();
-}
 function adjustQty(i,delta){
-  const materials = getData('materials'); materials[i].qty += delta; if(materials[i].qty<0) materials[i].qty=0;
+  const materials=getData('materials'); 
+  materials[i].qty+=delta; if(materials[i].qty<0) materials[i].qty=0;
   saveData('materials',materials); renderInventory(); renderReorder();
+}
+function updateMinStock(i,value){
+  const materials=getData('materials'); 
+  materials[i].minStock=parseInt(value)||1;
+  saveData('materials',materials); renderReorder();
 }
 
 // ----- Requests -----
 function renderRequests(){
-  const tbody = document.querySelector('#requests-table tbody'); tbody.innerHTML='';
-  const requests = getData('requests').filter(r=>r.builder===currentBuilder);
+  const tbody=document.querySelector('#requests-table tbody'); tbody.innerHTML='';
+  const requests=getData('requests').filter(r=>r.builder===currentBuilder);
   requests.forEach(r=>{
-    const list = r.items.map(it=>`${it.name}(${it.qty})`).join(', ');
+    const list=r.items.map(it=>`${it.name}(${it.qty} sq ft)`).join(', ');
     tbody.innerHTML+=`<tr><td>${r.job}</td><td>${list}</td><td>${r.status}</td></tr>`;
   });
 }
 function newRequest(){
-  const job = prompt('Job Name'); if(!job) return;
-  const materials = getData('materials'); if(materials.length===0){ alert('No materials'); return; }
-  let items = [];
+  const job=prompt('Job Name'); if(!job) return;
+  const materials=getData('materials'); if(materials.length===0){ alert('No materials'); return; }
+  let items=[];
   materials.forEach(m=>{
-    const qty = parseInt(prompt(`Qty of ${m.name}?`),10);
+    const qty=parseInt(prompt(`Qty of ${m.name}? (sq ft)`),10);
     if(qty>0) items.push({name:m.name,qty});
   });
   if(items.length===0) return;
-  const requests = getData('requests'); requests.push({builder:currentBuilder,job,items,status:'Pending'}); saveData('requests',requests);
-  renderRequests();
+  const requests=getData('requests'); requests.push({builder:currentBuilder,job,items,status:'Pending'});
+  saveData('requests',requests); renderRequests();
 }
 
-// ----- Reorder Tab -----
+// ----- Reorder -----
 function renderReorder(){
-  const tbody = document.querySelector('#reorder-table tbody'); tbody.innerHTML='';
-  const materials = getData('materials');
+  const tbody=document.querySelector('#reorder-table tbody'); tbody.innerHTML='';
+  const materials=getData('materials');
   materials.forEach(m=>{
     if(m.qty<=m.minStock){
-      const needed = m.minStock*2 - m.qty;
+      const needed=m.minStock*2 - m.qty;
       tbody.innerHTML+=`<tr><td>${m.name}</td><td>${needed}</td></tr>`;
     }
   });
