@@ -1,225 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SpaceOptions Inventory</title>
-<style>
-  body { font-family: 'Segoe UI', sans-serif; margin:0; background:#f0f2f5; color:#1f2937; }
-  header { background:#111827; color:white; padding:15px; text-align:center; font-size:24px; }
-  nav { display:flex; justify-content:center; background:#1f2937; flex-wrap:wrap; }
-  nav button { background:none; border:none; color:white; padding:12px 25px; cursor:pointer; font-size:16px; }
-  nav button:hover, nav button.active { background:#2563eb; }
-  .tab { display:none; padding:20px; }
-  table { width:100%; border-collapse: collapse; margin-top:10px; background:white; }
-  th, td { border:1px solid #ccc; padding:8px; text-align:center; }
-  th { background:#2563eb; color:white; }
-  button.small { padding:4px 8px; margin:0 2px; cursor:pointer; }
-  input.min-stock { width:60px; text-align:center; }
-  .low { color:red; font-weight:bold; }
-  .status-pending { color:orange; font-weight:bold; }
-  .status-approved { color:green; font-weight:bold; }
-  .status-rejected { color:red; font-weight:bold; }
-  h2 { margin-top:0; }
-  #new-request-btn { margin-top:10px; padding:8px 15px; background:#2563eb; color:white; border:none; cursor:pointer; }
-  #new-request-btn:hover { background:#1d4ed8; }
-  @media(max-width:600px){ nav { flex-direction:column; } }
-</style>
+  <title>SpaceOptions</title>
+  <style>
+    body { font-family: Arial; text-align: center; margin-top: 100px; }
+    input, button { padding: 10px; font-size: 16px; }
+  </style>
 </head>
 <body>
 
-<header>SpaceOptions Inventory System</header>
+<h1>Welcome to SpaceOptions</h1>
+<p>Enter Access Code:</p>
 
-<div id="login-tab" class="tab" style="display:block; text-align:center; margin-top:50px;">
-  <h2>Login</h2>
-  <input type="text" id="user-name" placeholder="Name" style="padding:8px; width:200px;">
-  <input type="password" id="user-pin" placeholder="PIN" style="padding:8px; width:200px; margin-left:10px;">
-  <button onclick="loginUser()">Login</button>
-</div>
-
-<div id="main-tabs" style="display:none;">
-  <nav>
-    <button class="tab-btn active" data-tab="inventory">Inventory</button>
-    <button class="tab-btn" data-tab="requests">Requests</button>
-    <button class="tab-btn" data-tab="reorder">Reorders</button>
-  </nav>
-
-  <div id="inventory" class="tab" style="display:block;">
-    <h2>Inventory</h2>
-    <table id="inventory-table">
-      <thead>
-        <tr><th>Material</th><th>Type</th><th>Quantity (sq ft)</th><th>Min Stock (sq ft)</th><th>Adjust</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  </div>
-
-  <div id="requests" class="tab">
-    <h2>Requests</h2>
-    <table id="requests-table">
-      <thead>
-        <tr><th>Builder</th><th>Job</th><th>Materials</th><th>Status</th><th>Actions</th></tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <button id="new-request-btn" onclick="newRequest()">+ New Request</button>
-  </div>
-
-  <div id="reorder" class="tab">
-    <h2>Reorders (Low Stock)</h2>
-    <table id="reorder-table">
-      <thead><tr><th>Material</th><th>Qty Needed</th></tr></thead>
-      <tbody></tbody>
-    </table>
-  </div>
-</div>
+<input type="password" id="code">
+<button onclick="login()">Enter</button>
 
 <script>
-// Fixed Builders
-const builders = [
-  {name:'Panther', pin:'1234'},
-  {name:'Will', pin:'1234'},
-  {name:'Brady', pin:'1234'},
-  {name:'Kaleb', pin:'1234'}
-];
-const manager = {name:'manager', pin:'admin123'};
+function login() {
+  const code = document.getElementById("code").value;
 
-// Fixed Materials
-const defaultMaterials = [
-  {name:'Wire Shelf', type:'Wire', qty:500, minStock:100},
-  {name:'Wood Shelf', type:'Wood', qty:300, minStock:50},
-  {name:'Brackets', type:'Hardware', qty:1000, minStock:200},
-  {name:'Screws', type:'Hardware', qty:2000, minStock:500}
-];
-
-// Init localStorage
-if(!localStorage.getItem('materials')) localStorage.setItem('materials', JSON.stringify(defaultMaterials));
-if(!localStorage.getItem('requests')) localStorage.setItem('requests', JSON.stringify([]));
-
-let currentUser = null;
-let isManager = false;
-
-// Login
-function loginUser(){
-  const name=document.getElementById('user-name').value.trim();
-  const pin=document.getElementById('user-pin').value.trim();
-  if(builders.find(b=>b.name===name && b.pin===pin)){ currentUser=name; isManager=false; }
-  else if(name===manager.name && pin===manager.pin){ currentUser=name; isManager=true; }
-  else { alert('Invalid credentials'); return; }
-
-  document.getElementById('login-tab').style.display='none';
-  document.getElementById('main-tabs').style.display='block';
-  document.getElementById('new-request-btn').style.display=isManager?'none':'inline-block';
-  renderAll();
+  if (["1111","2222","3333"].includes(code)) {
+    localStorage.setItem("user","builder");
+    window.location.href = "builder.html";
+  } else if (code === "9999") {
+    localStorage.setItem("user","manager");
+    window.location.href = "manager.html";
+  } else {
+    alert("Invalid code");
+  }
 }
-
-// Tabs
-document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    document.querySelectorAll('.tab').forEach(t=>t.style.display='none');
-    btn.classList.add('active');
-    document.getElementById(btn.dataset.tab).style.display='block';
-    renderAll();
-  });
-});
-
-// Data helpers
-function getData(key){ return JSON.parse(localStorage.getItem(key)||'[]'); }
-function saveData(key,data){ localStorage.setItem(key,JSON.stringify(data)); }
-
-// Inventory
-function renderInventory(){
-  const tbody=document.querySelector('#inventory-table tbody'); tbody.innerHTML='';
-  const materials=getData('materials');
-  materials.forEach((m,i)=>{
-    tbody.innerHTML+=`<tr>
-      <td>${m.name}</td>
-      <td>${m.type}</td>
-      <td class="${m.qty<=m.minStock?'low':''}">${m.qty}</td>
-      <td><input type="number" class="min-stock" value="${m.minStock}" onchange="updateMinStock(${i},this.value)"></td>
-      <td>
-        <button class="small" onclick="adjustQty(${i},1)">+1</button>
-        <button class="small" onclick="adjustQty(${i},-1)">-1</button>
-      </td>
-    </tr>`;
-  });
-}
-function adjustQty(i,delta){
-  const materials=getData('materials');
-  materials[i].qty+=delta;if(materials[i].qty<0)materials[i].qty=0;
-  saveData('materials',materials); renderInventory(); renderReorder();
-}
-function updateMinStock(i,value){
-  const materials=getData('materials'); materials[i].minStock=parseInt(value)||1;
-  saveData('materials',materials); renderReorder();
-}
-
-// Requests
-function renderRequests(){
-  const tbody=document.querySelector('#requests-table tbody'); tbody.innerHTML='';
-  let requests=getData('requests');
-  if(!isManager) requests=requests.filter(r=>r.builder===currentUser);
-  requests.forEach((r,i)=>{
-    const list=r.items.map(it=>`${it.name}(${it.qty} sq ft)`).join(', ');
-    let actions='';
-    if(isManager && r.status==='Pending'){
-      actions=`<button class="small" onclick="approveRequest(${i})">Approve</button>
-               <button class="small" onclick="rejectRequest(${i})">Reject</button>`;
-    }
-    tbody.innerHTML+=`<tr>
-      <td>${r.builder}</td>
-      <td>${r.job}</td>
-      <td>${list}</td>
-      <td class="status-${r.status.toLowerCase()}">${r.status}</td>
-      <td>${actions}</td>
-    </tr>`;
-  });
-}
-function newRequest(){
-  const job=prompt('Job Name'); if(!job) return;
-  const materials=getData('materials');
-  let items=[];
-  materials.forEach(m=>{
-    const qty=parseInt(prompt(`Qty of ${m.name}? (sq ft)`),10);
-    if(qty>0) items.push({name:m.name,qty});
-  });
-  if(items.length===0) return;
-  const requests=getData('requests'); requests.push({builder:currentUser,job,items,status:'Pending'});
-  saveData('requests',requests); renderRequests();
-}
-
-// Manager actions
-function approveRequest(i){
-  const requests=getData('requests'); const r=requests[i];
-  const materials=getData('materials');
-  r.items.forEach(it=>{
-    const m=materials.find(mat=>mat.name===it.name);
-    if(m) m.qty-=it.qty;
-  });
-  r.status='Approved'; saveData('requests',requests); saveData('materials',materials);
-  renderRequests(); renderInventory(); renderReorder();
-}
-function rejectRequest(i){
-  const requests=getData('requests'); requests[i].status='Rejected'; saveData('requests',requests);
-  renderRequests();
-}
-
-// Reorders
-function renderReorder(){
-  const tbody=document.querySelector('#reorder-table tbody'); tbody.innerHTML='';
-  const materials=getData('materials');
-  materials.forEach(m=>{
-    if(m.qty<=m.minStock){
-      const needed=m.minStock*2 - m.qty;
-      tbody.innerHTML+=`<tr><td>${m.name}</td><td>${needed}</td></tr>`;
-    }
-  });
-}
-
-// Render all
-function renderAll(){ renderInventory(); renderRequests(); renderReorder(); }
-
 </script>
+
 </body>
 </html>
