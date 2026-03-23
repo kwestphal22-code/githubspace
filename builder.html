@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Builder Dashboard</title>
+</head>
+<body>
+
+<h1>Builder Dashboard</h1>
+
+<button onclick="loadInventory()">Refresh Inventory</button>
+<div id="inventory"></div>
+
+<h2>Place Order</h2>
+<input id="orderItem" placeholder="Item">
+<input id="orderQty" placeholder="Qty">
+<button onclick="placeOrder()">Order</button>
+
+<h2>Request Inventory</h2>
+<input id="reqItem" placeholder="Item">
+<input id="reqQty" placeholder="Qty">
+<button onclick="requestItem()">Request</button>
+
+<h2>Leave Note</h2>
+<input id="note" placeholder="Note">
+<button onclick="sendNote()">Send</button>
+
+<h2>Jobs</h2>
+<button onclick="loadJobs()">Load Jobs</button>
+<div id="jobs"></div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbwvwpiO-xoc2GQN8-Mvf70wQ1SXqV0MQvk9Q0Tx3jIVxl47VRWbpeU4eYP9WFoyGv3I/exec";
+
+function loadInventory() {
+  fetch(API_URL + "?type=inventory")
+  .then(r=>r.json())
+  .then(data=>{
+    let html="<ul>";
+    data.forEach(row=>{
+      html+=`<li>${row[0]} - ${row[1]}</li>`;
+    });
+    html+="</ul>";
+    document.getElementById("inventory").innerHTML=html;
+  });
+}
+
+function placeOrder() {
+  fetch(API_URL,{
+    method:"POST",
+    body: JSON.stringify({
+      type:"order",
+      item:orderItem.value,
+      qty:orderQty.value
+    })
+  });
+  alert("Order placed");
+}
+
+function requestItem() {
+  fetch(API_URL,{
+    method:"POST",
+    body: JSON.stringify({
+      type:"request",
+      item:reqItem.value,
+      qty:reqQty.value
+    })
+  });
+  alert("Request sent");
+}
+
+function sendNote() {
+  fetch(API_URL,{
+    method:"POST",
+    body: JSON.stringify({
+      type:"note",
+      note:note.value
+    })
+  });
+  alert("Note sent");
+}
+
+function loadJobs() {
+  fetch(API_URL + "?type=jobs")
+  .then(r=>r.json())
+  .then(data=>{
+    let html="<ul>";
+    data.forEach(j=>{
+      html+=`<li>${j[0]} - $${j[1]}</li>`;
+    });
+    html+="</ul>";
+    document.getElementById("jobs").innerHTML=html;
+  });
+}
+</script>
+
+</body>
+</html>
