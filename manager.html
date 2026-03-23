@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Manager Dashboard</title>
+</head>
+<body>
+
+<h1>Manager Dashboard</h1>
+
+<h2>Inventory</h2>
+<button onclick="loadInventory()">Refresh</button>
+<div id="inventory"></div>
+
+<h3>Update Inventory</h3>
+<input id="item" placeholder="Item">
+<input id="qty" placeholder="+/- Qty">
+<button onclick="updateInventory()">Update</button>
+
+<h2>Requests</h2>
+<button onclick="loadRequests()">Load</button>
+<div id="requests"></div>
+
+<h2>Set Job Price</h2>
+<input id="jobName" placeholder="Job">
+<input id="jobPrice" placeholder="Price">
+<button onclick="addJob()">Add Job</button>
+
+<h2>Notes</h2>
+<button onclick="loadNotes()">Load Notes</button>
+<div id="notes"></div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbwvwpiO-xoc2GQN8-Mvf70wQ1SXqV0MQvk9Q0Tx3jIVxl47VRWbpeU4eYP9WFoyGv3I/exec";
+
+function loadInventory() {
+  fetch(API_URL+"?type=inventory")
+  .then(r=>r.json())
+  .then(data=>{
+    let html="<ul>";
+    data.forEach(row=>{
+      html+=`<li>${row[0]} - ${row[1]}</li>`;
+    });
+    html+="</ul>";
+    inventory.innerHTML=html;
+  });
+}
+
+function updateInventory() {
+  fetch(API_URL,{
+    method:"POST",
+    body: JSON.stringify({
+      type:"updateInventory",
+      item:item.value,
+      qty:qty.value
+    })
+  });
+  alert("Updated");
+}
+
+function loadRequests() {
+  fetch(API_URL+"?type=requests")
+  .then(r=>r.json())
+  .then(data=>{
+    let html="<ul>";
+    data.forEach(r=>{
+      html+=`<li>${r[1]} - ${r[2]} 
+      <button onclick="approve('${r[1]}',${r[2]})">Approve</button></li>`;
+    });
+    html+="</ul>";
+    requests.innerHTML=html;
+  });
+}
+
+function approve(item,qty) {
+  fetch(API_URL,{
+    method:"POST",
+    body: JSON.stringify({
+      type:"approve",
+      item:item,
+      qty:qty
+    })
+  });
+  alert("Approved");
+}
+
+function addJob() {
+  fetch(API_URL,{
+    method:"POST",
+    body: JSON.stringify({
+      type:"job",
+      name:jobName.value,
+      price:jobPrice.value
+    })
+  });
+  alert("Job added");
+}
+
+function loadNotes() {
+  fetch(API_URL+"?type=notes")
+  .then(r=>r.json())
+  .then(data=>{
+    let html="<ul>";
+    data.forEach(n=>{
+      html+=`<li>${n[1]}</li>`;
+    });
+    html+="</ul>";
+    notes.innerHTML=html;
+  });
+}
+</script>
+
+</body>
+</html>
